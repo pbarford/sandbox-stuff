@@ -24,20 +24,25 @@ public class MergeSort {
 
         while(pos < res.length) {
 
+            //check if merge has reached the end of either left/right
             if ((leftpos < left.length) && (rightpos<right.length)) {
                 if (left[leftpos] < right[rightpos]) {
+                    //merge left
                     res[pos] = left[leftpos];
                     pos++;
                     leftpos++;
                 }
                 else {
+                    //merge right
                     res[pos] = right[rightpos];
                     pos++;
                     rightpos++;
                 }
             }
             else {
+                //merge remaining from left/right
                 if (leftpos >= left.length) {
+                    //merge any remaining on the the right
                     while (rightpos < right.length) {
                         res[pos] = right[rightpos];
                         pos++;
@@ -45,6 +50,7 @@ public class MergeSort {
                     }
                 }
                 if (rightpos >= right.length) {
+                    //merge any remaining on the left
                     while (leftpos < left.length) {
                         res[pos] = left[leftpos];
                         leftpos++;
