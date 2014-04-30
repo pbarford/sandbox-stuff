@@ -5,7 +5,6 @@ import java.util.concurrent.*;
 
 public class ExecutorUsageTest {
     private static ExecutorService executor = null;
-    private static volatile CyclicBarrier cb = new CyclicBarrier(2);
     private static volatile Future<String> taskOneResults = null;
 
     public static void main(String[] args) {
@@ -22,7 +21,12 @@ public class ExecutorUsageTest {
 
     private static CountDownLatch submitTasks() throws Exception {
         CountDownLatch latch = new CountDownLatch(2);
-        CyclicBarrier barrier = new CyclicBarrier(2);
+        CyclicBarrier barrier = new CyclicBarrier(2, new Runnable(){
+            @Override
+            public void run(){
+                System.out.println(Thread.currentThread().getName() + " - Threads are complete");
+            }
+        });
         taskOneResults = executor.submit(new TestOne(latch, barrier));
         executor.submit(new TestTwo(latch, barrier));
         return latch;
