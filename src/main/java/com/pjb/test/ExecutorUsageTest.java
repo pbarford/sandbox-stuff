@@ -1,64 +1,83 @@
 package com.pjb.test;
 
 import java.util.Calendar;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.concurrent.*;
 
 public class ExecutorUsageTest {
     private static ExecutorService executor = null;
+    private static volatile CyclicBarrier cb = new CyclicBarrier(2);
     private static volatile Future<String> taskOneResults = null;
-    private static volatile Future taskTwoResults = null;
 
     public static void main(String[] args) {
         executor = Executors.newFixedThreadPool(2);
-        while (true) {
-            try {
-                checkTasks();
-                Thread.sleep(100);
-            } catch (Exception e) {
-                System.err.println("Caught exception: " + e.getMessage());
-            }
+
+        try {
+            submitTasks().await();
+            System.out.println(Thread.currentThread().getName() + " - " + Calendar.getInstance().getTime().toString() + " --> " + taskOneResults.get());
+            executor.shutdown();
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
-    private static void checkTasks() throws Exception {
-        if (taskOneResults == null
-                || taskOneResults.isDone()
-                || taskOneResults.isCancelled()) {
-            if(taskOneResults!=null && taskOneResults.isDone())
-                System.out.println(taskOneResults.get());
-            taskOneResults = executor.submit(new TestOne());
-        }
-
-        if (taskTwoResults == null
-                || taskTwoResults.isDone()
-                || taskTwoResults.isCancelled()) {
-            taskTwoResults = executor.submit(new TestTwo());
-        }
+    private static CountDownLatch submitTasks() throws Exception {
+        CountDownLatch latch = new CountDownLatch(2);
+        CyclicBarrier barrier = new CyclicBarrier(2);
+        taskOneResults = executor.submit(new TestOne(latch, barrier));
+        executor.submit(new TestTwo(latch, barrier));
+        return latch;
     }
 }
 
 class TestOne implements Callable<String> {
+    private final CountDownLatch latch;
+    private final CyclicBarrier barrier;
+    public TestOne(CountDownLatch latch,
+                   CyclicBarrier barrier) {
+        this.latch = latch;
+        this.barrier = barrier;
+    }
+
     public String call() {
-        System.out.println("Executing task one");
+        System.out.println(Thread.currentThread().getName() + " - Executing task one");
         try {
-            Thread.sleep(2000);
+            for(int i=0; i < 10; i++) {
+                System.out.println(Thread.currentThread().getName() + " - " + i);
+                Thread.sleep(200);
+            }
+            System.out.println(Thread.currentThread().getName() + " - waiting for other thread");
+            String timeDone = Calendar.getInstance().getTime().toString();
+            barrier.await();
+            return "TEST_ONE_DONE @ " + timeDone;
         } catch (Throwable e) {
             e.printStackTrace();
+            return "TEST_ONE_DONE EXCEPTION @ " + Calendar.getInstance().getTime().toString();
         }
-        return "TEST_ONE_DONE @ " + Calendar.getInstance().getTime().toString();
+        finally {
+            latch.countDown();
+        }
     }
 }
 
 class TestTwo implements Runnable {
+    private final CountDownLatch latch;
+    private final CyclicBarrier barrier;
+    public TestTwo(CountDownLatch latch,
+                   CyclicBarrier barrier) {
+        this.latch = latch;
+        this.barrier = barrier;
+    }
     public void run() {
-        System.out.println("Executing task two");
+        System.out.println(Thread.currentThread().getName() + " - Executing task two");
         try {
             Thread.sleep(6000);
+            System.out.println(Thread.currentThread().getName() + " - waiting for other thread");
+            barrier.await();
         } catch (Throwable e) {
             e.printStackTrace();
+        }
+        finally {
+            latch.countDown();
         }
     }
 }
