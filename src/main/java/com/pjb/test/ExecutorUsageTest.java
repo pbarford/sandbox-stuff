@@ -21,12 +21,7 @@ public class ExecutorUsageTest {
 
     private static CountDownLatch submitTasks() throws Exception {
         CountDownLatch latch = new CountDownLatch(2);
-        CyclicBarrier barrier = new CyclicBarrier(2, new Runnable(){
-            @Override
-            public void run(){
-                System.out.println(Thread.currentThread().getName() + " - Threads are complete");
-            }
-        });
+        CyclicBarrier barrier = new CyclicBarrier(2, new TasksComplete());
         taskOneResults = executor.submit(new TestOne(latch, barrier));
         executor.submit(new TestTwo(latch, barrier));
         return latch;
@@ -49,7 +44,7 @@ class TestOne implements Callable<String> {
                 System.out.println(Thread.currentThread().getName() + " - " + i);
                 Thread.sleep(200);
             }
-            System.out.println(Thread.currentThread().getName() + " - waiting for other thread");
+            System.out.println(Thread.currentThread().getName() + " - waiting all tasks to be completed");
             String timeDone = Calendar.getInstance().getTime().toString();
             barrier.await();
             return "TEST_ONE_DONE @ " + timeDone;
@@ -75,7 +70,7 @@ class TestTwo implements Runnable {
         System.out.println(Thread.currentThread().getName() + " - Executing task two");
         try {
             Thread.sleep(6000);
-            System.out.println(Thread.currentThread().getName() + " - waiting for other thread");
+            System.out.println(Thread.currentThread().getName() + " - waiting all tasks to be completed");
             barrier.await();
         } catch (Throwable e) {
             e.printStackTrace();
@@ -83,5 +78,12 @@ class TestTwo implements Runnable {
         finally {
             latch.countDown();
         }
+    }
+}
+
+class TasksComplete implements Runnable {
+    @Override
+    public void run() {
+        System.out.println(Thread.currentThread().getName() + " - Tasks are complete");
     }
 }
